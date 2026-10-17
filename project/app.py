@@ -15,7 +15,6 @@ from flask import (
 )
 from flask_sqlalchemy import SQLAlchemy
 
-
 basedir = Path(__file__).resolve().parent
 
 # configuration
@@ -106,8 +105,10 @@ def search():
     query = request.args.get("query")
     if query:
         entries = db.session.query(models.Post).filter(
-            models.Post.title.icontains(query, autoescape=True)
-            | models.Post.text.icontains(query, autoescape=True)
+            db.or_(
+                models.Post.title.icontains(query, autoescape=True),
+                models.Post.text.icontains(query, autoescape=True),
+            )
         )
         return render_template("search.html", entries=entries, query=query)
     return render_template("search.html")

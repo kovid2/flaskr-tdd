@@ -38,9 +38,7 @@ def logout(client):
 def add_post(client, title, text):
     """Log in and create a post (helper)"""
     login(client, app.config["USERNAME"], app.config["PASSWORD"])
-    return client.post(
-        "/add", data=dict(title=title, text=text), follow_redirects=True
-    )
+    return client.post("/add", data=dict(title=title, text=text), follow_redirects=True)
 
 
 def test_index(client):
