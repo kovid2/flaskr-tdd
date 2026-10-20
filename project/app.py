@@ -23,13 +23,24 @@ USERNAME = "admin"
 PASSWORD = "admin"
 SECRET_KEY = os.getenv("SECRET_KEY", "change_me")
 
+
+def normalize_db_url(url):
+    """Points Postgres URLs at the installed psycopg2 driver.
+
+    Render gives "postgres://" (which SQLAlchemy rejects), and since
+    SQLAlchemy 2.1 a bare "postgresql://" defaults to psycopg v3, which is
+    not installed, so the driver is pinned explicitly.
+    """
+    for scheme in ("postgres://", "postgresql://"):
+        if url.startswith(scheme):
+            return url.replace(scheme, "postgresql+psycopg2://", 1)
+    return url
+
+
 # use DATABASE_URL (e.g. Postgres on Render) if set, otherwise local SQLite
 url = os.getenv("DATABASE_URL", f"sqlite:///{Path(basedir).joinpath(DATABASE)}")
 
-if url.startswith("postgres://"):
-    url = url.replace("postgres://", "postgresql://", 1)
-
-SQLALCHEMY_DATABASE_URI = url
+SQLALCHEMY_DATABASE_URI = normalize_db_url(url)
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 

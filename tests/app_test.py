@@ -2,7 +2,7 @@ import json
 import pytest
 from pathlib import Path
 
-from project.app import app, db
+from project.app import app, db, normalize_db_url
 from project.models import Post
 
 TEST_DB = "test.db"
@@ -203,3 +203,25 @@ def test_add_requires_login(client):
     assert rv.status_code == 401
     with app.app_context():
         assert db.session.query(Post).count() == 0
+
+
+# ---------------------------------------------------------------------------
+# DATABASE_URL handling (Render Postgres)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "given, expected",
+    [
+        # Render/Heroku-style scheme
+        ("postgres://u:p@host:5432/db", "postgresql+psycopg2://u:p@host:5432/db"),
+        # standard scheme: SQLAlchemy 2.1 would default this to psycopg v3,
+        # which is not installed, so the driver must be pinned explicitly
+        ("postgresql://u:p@host/db", "postgresql+psycopg2://u:p@host/db"),
+        # an explicit driver and non-Postgres URLs are left untouched
+        ("postgresql+psycopg2://u:p@host/db", "postgresql+psycopg2://u:p@host/db"),
+        ("sqlite:///flaskr.db", "sqlite:///flaskr.db"),
+    ],
+)
+def test_normalize_db_url(given, expected):
+    assert normalize_db_url(given) == expected
