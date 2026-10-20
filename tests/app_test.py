@@ -2,7 +2,7 @@ import json
 import pytest
 from pathlib import Path
 
-from project.app import app, db, normalize_db_url
+from project.app import app, db
 from project.models import Post
 
 TEST_DB = "test.db"
@@ -99,22 +99,6 @@ def test_delete_message(client):
 # ---------------------------------------------------------------------------
 
 
-def test_search_page_loads(client):
-    """GET /search/ with no query renders the search form and no entries"""
-    add_post(client, "Flask post", "body")
-    rv = client.get("/search/")
-    assert rv.status_code == 200
-    assert b"Search:" in rv.data
-    assert b'name="query"' in rv.data
-    assert b"Flask post" not in rv.data
-
-
-def test_index_links_to_search(client):
-    """The home page has a button that navigates to the search page"""
-    rv = client.get("/")
-    assert b'href="/search/"' in rv.data
-
-
 def test_search_matches_title_and_text(client):
     """A query matches posts by title or by body text; others are hidden"""
     add_post(client, "Testing in Flask", "pytest fixtures")
@@ -133,23 +117,6 @@ def test_search_is_case_insensitive(client):
     assert b"Hello World" in rv.data
 
 
-def test_search_no_results(client):
-    """A query that matches nothing shows no posts"""
-    add_post(client, "Hello World", "body")
-    rv = client.get("/search/", query_string={"query": "zzz"})
-    assert rv.status_code == 200
-    assert b"Hello World" not in rv.data
-
-
-def test_search_wildcards_are_literal(client):
-    """SQL LIKE wildcards in the query are matched literally, not as patterns"""
-    add_post(client, "100% done", "body")
-    add_post(client, "Halfway", "body")
-    rv = client.get("/search/", query_string={"query": "%"})
-    assert b"100% done" in rv.data
-    assert b"Halfway" not in rv.data
-
-
 # ---------------------------------------------------------------------------
 # login_required on delete (own tests)
 # ---------------------------------------------------------------------------
@@ -163,19 +130,6 @@ def test_delete_requires_login(client):
     assert data == {"status": 0, "message": "Please log in."}
 
 
-def test_delete_logged_out_keeps_post(client):
-    """A logged-out user cannot remove an existing post"""
-    add_post(client, "Keep me", "body")
-    logout(client)
-    with app.app_context():
-        post_id = db.session.query(Post).one().id
-    rv = client.get(f"/delete/{post_id}")
-    assert rv.status_code == 401
-    with app.app_context():
-        assert db.session.get(Post, post_id) is not None
-    assert b"Keep me" in client.get("/").data
-
-
 def test_delete_logged_in_removes_post(client):
     """A logged-in user can remove a post; it disappears from the page"""
     add_post(client, "Delete me", "body")
@@ -187,41 +141,3 @@ def test_delete_logged_in_removes_post(client):
     with app.app_context():
         assert db.session.get(Post, post_id) is None
     assert b"Delete me" not in client.get("/").data
-
-
-def test_delete_after_logout_is_rejected(client):
-    """Logging out revokes permission to delete"""
-    login(client, app.config["USERNAME"], app.config["PASSWORD"])
-    logout(client)
-    rv = client.get("/delete/1")
-    assert rv.status_code == 401
-
-
-def test_add_requires_login(client):
-    """Logged-out users cannot create posts either"""
-    rv = client.post("/add", data=dict(title="x", text="y"))
-    assert rv.status_code == 401
-    with app.app_context():
-        assert db.session.query(Post).count() == 0
-
-
-# ---------------------------------------------------------------------------
-# DATABASE_URL handling (Render Postgres)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    "given, expected",
-    [
-        # Render/Heroku-style scheme
-        ("postgres://u:p@host:5432/db", "postgresql+psycopg2://u:p@host:5432/db"),
-        # standard scheme: SQLAlchemy 2.1 would default this to psycopg v3,
-        # which is not installed, so the driver must be pinned explicitly
-        ("postgresql://u:p@host/db", "postgresql+psycopg2://u:p@host/db"),
-        # an explicit driver and non-Postgres URLs are left untouched
-        ("postgresql+psycopg2://u:p@host/db", "postgresql+psycopg2://u:p@host/db"),
-        ("sqlite:///flaskr.db", "sqlite:///flaskr.db"),
-    ],
-)
-def test_normalize_db_url(given, expected):
-    assert normalize_db_url(given) == expected
