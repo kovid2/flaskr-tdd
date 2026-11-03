@@ -4,7 +4,7 @@ A small Flask blog built test-first, following the
 [course README](https://github.com/shuruizUofT/flaskr-tdd/blob/main/README.md),
 and deployed to Render with a Postgres database.
 
-**Live app:** _add your Render URL here_
+**Live app:** https://flaskr-tdd-b457.onrender.com/
 
 ## Features
 
