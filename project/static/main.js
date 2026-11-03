@@ -2,12 +2,15 @@
   console.log("ready!"); // sanity check
 })();
 
-const postElements = document.getElementsByClassName("entry");
+const deleteButtons = document.getElementsByClassName("delete-btn");
 
-for (var i = 0; i < postElements.length; i++) {
-  postElements[i].addEventListener("click", function () {
-    const postId = this.getElementsByTagName("h2")[0].getAttribute("id");
-    const node = this;
+for (var i = 0; i < deleteButtons.length; i++) {
+  deleteButtons[i].addEventListener("click", function () {
+    const postId = this.dataset.id;
+    const node = this.closest(".entry");
+    if (!confirm("Delete this post?")) {
+      return;
+    }
     fetch(`/delete/${postId}`)
       .then(function (resp) {
         return resp.json();
